@@ -5,6 +5,8 @@ import 'puzzle_progress_screen.dart';
 import 'puzzle_gameplay_screen.dart';
 import 'settings_screen.dart';
 import 'dart:math';
+import '../services/currency_service.dart';
+import '../services/sound_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +17,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final PuzzleProgressService _service = PuzzleProgressService();
+  final CurrencyService _currencyService = CurrencyService();
+  final SoundService _soundService = SoundService();
 
   final List<Map<String, dynamic>> _puzzleTypes = [
     {
@@ -28,18 +32,6 @@ class _HomeScreenState extends State<HomeScreen> {
       'icon': Icons.linear_scale_rounded,
       'color': Colors.greenAccent.shade700,
       'description': 'Find the hidden pattern.',
-    },
-    {
-      'title': 'Nonogram',
-      'icon': Icons.border_all_rounded,
-      'color': Colors.orangeAccent.shade700,
-      'description': 'Reveal the hidden image.',
-    },
-    {
-      'title': 'Logic Grid',
-      'icon': Icons.extension_rounded,
-      'color': Colors.deepPurpleAccent,
-      'description': 'Deduce the unique mapping.',
     },
   ];
 
@@ -56,9 +48,25 @@ class _HomeScreenState extends State<HomeScreen> {
             floating: false,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              title: const Text(
-                'IQ VAULT',
-                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
+              title: const Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.shield_rounded,
+                    color: Colors.white24,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'IQ VAULT',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
               ),
               centerTitle: true,
               background: Container(
@@ -82,16 +90,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
-                    const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.shield_rounded,
-                            color: Colors.white,
-                            size: 60,
-                          ),
-                        ],
+                    Positioned(
+                      left: -20,
+                      bottom: 20,
+                      child: Icon(
+                        Icons.grid_4x4_rounded,
+                        size: 120,
+                        color: Colors.white.withValues(alpha: 0.05),
                       ),
                     ),
                   ],
@@ -99,8 +104,62 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             actions: [
+              ValueListenableBuilder(
+                valueListenable: _currencyService.listenable,
+                builder: (context, box, _) {
+                  return Center(
+                    child: Container(
+                      height: 28,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.amber.shade400,
+                            Colors.orange.shade700,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(1.5),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.monetization_on_rounded,
+                              color: Colors.orange.shade800,
+                              size: 10,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_currencyService.currency}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               IconButton(
                 onPressed: () {
+                  _soundService.playClick();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -133,6 +192,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Challenge your mind',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 20),
+                  _buildTesterBonusBanner(),
                 ],
               ),
             ),
@@ -180,6 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return GestureDetector(
       onTap: () {
+        _soundService.playClick();
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -249,6 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    _soundService.playClick();
                     final randomId = 1000 + Random().nextInt(10000);
                     Navigator.push(
                       context,
@@ -280,6 +343,91 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTesterBonusBanner() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2125) : Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withValues(alpha: 0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.indigo.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.amber.shade400, Colors.orange.shade700],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.orange.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.stars_rounded, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tester IQ Bonus',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${CurrencyService.testerBonus} IQ Points have been added for testing.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : Colors.indigo.shade900,
+              foregroundColor: isDark ? Colors.black : Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            child: const Text(
+              'ACTIVE',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+            ),
+          ),
+        ],
       ),
     );
   }

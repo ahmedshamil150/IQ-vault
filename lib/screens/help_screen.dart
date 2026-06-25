@@ -35,28 +35,6 @@ class HelpScreen extends StatelessWidget {
               '• Predict the next missing element.\n'
               '• Patterns can be arithmetic or logical.',
             ),
-            const SizedBox(height: 20),
-            _buildHelpSection(
-              context,
-              'Nonogram',
-              Icons.border_all_rounded,
-              Colors.orangeAccent,
-              '• Reveal a hidden picture in the grid.\n'
-              '• Use numbers at sides as hints.\n'
-              '• Fill consecutive blocks of cells.\n'
-              '• Logic ensures only one correct image.',
-            ),
-            const SizedBox(height: 20),
-            _buildHelpSection(
-              context,
-              'Logic Grid',
-              Icons.extension_rounded,
-              Colors.deepPurpleAccent,
-              '• Use detective-style deduction.\n'
-              '• Map diverse items using provided clues.\n'
-              '• Eliminate impossible combinations.\n'
-              '• Reach the single consistent solution.',
-            ),
             const SizedBox(height: 40),
             Container(
               padding: const EdgeInsets.all(24),

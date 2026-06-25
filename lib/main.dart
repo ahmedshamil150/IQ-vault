@@ -5,8 +5,12 @@ import 'dart:io';
 import 'screens/home_screen.dart';
 import 'screens/splash_loading_screen.dart';
 
+import 'services/currency_service.dart';
+import 'services/sound_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SoundService.init();
   runApp(const MyApp());
 }
 
@@ -29,22 +33,55 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _initHive() async {
     try {
-      final directory = await getApplicationSupportDirectory();
-      final path = '${directory.path}/iq_vault_data';
-      final iqDir = Directory(path);
-      if (!await iqDir.exists()) {
-        await iqDir.create(recursive: true);
+      // Ensure the splash screen is visible for at least 2.5 seconds for premium feel
+      final results = await Future.wait([
+        _performInitialization(),
+        Future.delayed(const Duration(milliseconds: 2500)),
+      ]);
+
+      if (results[0] == true) {
+        setState(() {
+          _initialized = true;
+        });
       }
-      await Hive.initFlutter(path);
-      await Hive.openBox('iqVaultBox').timeout(const Duration(seconds: 10));
-      setState(() {
-        _initialized = true;
-      });
     } catch (e) {
       setState(() {
         _error = e.toString();
       });
     }
+  }
+
+  Future<bool> _performInitialization() async {
+    final directory = await getApplicationSupportDirectory();
+    final path = '${directory.path}/iq_vault_data';
+    final iqDir = Directory(path);
+    if (!await iqDir.exists()) {
+      await iqDir.create(recursive: true);
+    }
+    await Hive.initFlutter(path);
+    final box = await Hive.openBox('iqVaultBox').timeout(const Duration(seconds: 10));
+
+    if (!box.containsKey('isDarkMode')) {
+      await box.put('isDarkMode', false);
+    }
+
+    if (!box.containsKey('tester_bonus_1000')) {
+      final currentCurrency = box.get(
+        'user_currency',
+        defaultValue: CurrencyService.initialCurrency,
+      ) as int;
+      await box.put(
+        'user_currency',
+        currentCurrency + CurrencyService.testerBonus,
+      );
+      await box.put('tester_bonus_1000', true);
+    }
+
+    if (box.containsKey('tester_bonus_100k')) {
+      await box.delete('tester_bonus_100k');
+    }
+
+    return true;
   }
 
   @override

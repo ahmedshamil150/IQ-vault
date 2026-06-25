@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../services/sound_service.dart';
+import '../services/currency_service.dart';
 import 'help_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -10,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final SoundService _soundService = SoundService();
   bool _isGameMechanicsExpanded = false;
 
   @override
@@ -17,7 +21,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final box = Hive.box('iqVaultBox');
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('SETTINGS'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('SETTINGS'),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            _soundService.playClick();
+            Navigator.pop(context);
+          },
+        ),
+      ),
       body: ValueListenableBuilder(
         valueListenable: box.listenable(keys: ['isDarkMode']),
         builder: (context, Box box, _) {
@@ -37,8 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'IQ Vault is designed to provide a comprehensive cognitive workout. Each puzzle category targets specific mental faculties:\n\n'
                     '• Sudoku: Logic & Elimination\n'
                     '• Sequence: Pattern Recognition\n'
-                    '• Nonogram: Spatial Reasoning\n'
-                    '• Logic Grid: Deductive Analysis\n\n'
+                    '\n'
                     'Complete levels to track your progress and unlock random daily challenges!',
                     style: TextStyle(
                       fontSize: 13,
@@ -57,8 +70,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: 'Easier on the eyes',
                   trailing: Switch.adaptive(
                     value: darkEnabled,
-                    onChanged: (val) => box.put('isDarkMode', val),
+                    onChanged: (val) {
+                      _soundService.playToggle();
+                      box.put('isDarkMode', val);
+                    },
                     activeTrackColor: Colors.indigoAccent,
+                  ),
+                ),
+                _buildSettingRow(
+                  context,
+                  icon: Icons.volume_up_rounded,
+                  title: 'Sound Effects',
+                  subtitle: 'Audio and haptic feedback',
+                  trailing: ValueListenableBuilder(
+                    valueListenable: box.listenable(keys: ['isSoundEnabled']),
+                    builder: (context, Box box, _) {
+                      final soundEnabled = box.get('isSoundEnabled', defaultValue: true);
+                      return Switch.adaptive(
+                        value: soundEnabled,
+                        onChanged: (val) {
+                          _soundService.playToggle();
+                          box.put('isSoundEnabled', val);
+                        },
+                        activeTrackColor: Colors.indigoAccent,
+                      );
+                    },
                   ),
                 ),
               ]),
@@ -70,6 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Help Center',
                   subtitle: 'Learn how to play',
                   onTap: () {
+                    _soundService.playClick();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -92,6 +129,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.shield_outlined,
                   title: 'Privacy Policy',
                   subtitle: 'How we handle data',
+                  onTap: () {
+                    _soundService.playClick();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PrivacyPolicyScreen(),
+                      ),
+                    );
+                  },
                 ),
               ]),
               const SizedBox(height: 40),

@@ -2,22 +2,28 @@ import 'package:hive/hive.dart';
 
 class PuzzleProgress {
   final bool completed;
+  final bool isUnlocked;
   final int stars;
   final int timeSeconds;
+  final double progressPercentage; // 0.0 to 1.0
   final dynamic currentState; // To store the grid/sequence state
 
   const PuzzleProgress({
     required this.completed,
+    this.isUnlocked = false,
     required this.stars,
     required this.timeSeconds,
+    this.progressPercentage = 0.0,
     this.currentState,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'completed': completed,
+      'isUnlocked': isUnlocked,
       'stars': stars,
       'timeSeconds': timeSeconds,
+      'progressPercentage': progressPercentage,
       'currentState': currentState,
     };
   }
@@ -25,16 +31,20 @@ class PuzzleProgress {
   static PuzzleProgress fromMap(Map<dynamic, dynamic> map) {
     return PuzzleProgress(
       completed: map['completed'] == true,
+      isUnlocked: map['isUnlocked'] == true,
       stars: (map['stars'] as int?) ?? 0,
       timeSeconds: (map['timeSeconds'] as int?) ?? 0,
+      progressPercentage: (map['progressPercentage'] as num?)?.toDouble() ?? 0.0,
       currentState: map['currentState'],
     );
   }
 
   static const PuzzleProgress empty = PuzzleProgress(
     completed: false,
+    isUnlocked: false,
     stars: 0,
     timeSeconds: 0,
+    progressPercentage: 0.0,
   );
 }
 
@@ -56,14 +66,19 @@ class PuzzleProgressService {
     required bool completed,
     required int stars,
     required int timeSeconds,
+    double progressPercentage = 0.0,
+    bool? isUnlocked,
     dynamic currentState,
   }) async {
     final box = await _getBox();
     final key = _puzzleKey(category, puzzleId);
+    final existing = getProgress(category, puzzleId);
     final progress = PuzzleProgress(
       completed: completed,
+      isUnlocked: isUnlocked ?? existing.isUnlocked,
       stars: stars,
       timeSeconds: timeSeconds,
+      progressPercentage: progressPercentage,
       currentState: currentState,
     );
     await box.put(key, progress.toMap());
@@ -103,5 +118,19 @@ class PuzzleProgressService {
     final box = await _getBox();
     final key = _puzzleKey(category, puzzleId);
     await box.delete(key);
+  }
+
+  Future<void> unlockLevel(String category, int puzzleId) async {
+    final box = await _getBox();
+    final key = _puzzleKey(category, puzzleId);
+    final existing = getProgress(category, puzzleId);
+    final progress = PuzzleProgress(
+      completed: existing.completed,
+      isUnlocked: true,
+      stars: existing.stars,
+      timeSeconds: existing.timeSeconds,
+      currentState: existing.currentState,
+    );
+    await box.put(key, progress.toMap());
   }
 }

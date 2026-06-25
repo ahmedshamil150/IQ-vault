@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../services/puzzle_progress_service.dart';
+import '../services/currency_service.dart';
+import '../services/sound_service.dart';
 import 'puzzle_gameplay_screen.dart';
 
 class PuzzleProgressScreen extends StatefulWidget {
@@ -14,6 +16,8 @@ class PuzzleProgressScreen extends StatefulWidget {
 
 class _PuzzleProgressScreenState extends State<PuzzleProgressScreen> {
   final PuzzleProgressService _service = PuzzleProgressService();
+  final CurrencyService _currencyService = CurrencyService();
+  final SoundService _soundService = SoundService();
   final List<int> _puzzles = List<int>.generate(50, (index) => index + 1);
 
   String _getDifficulty(int id) {
@@ -40,6 +44,13 @@ class _PuzzleProgressScreenState extends State<PuzzleProgressScreen> {
             expandedHeight: 160.0,
             floating: false,
             pinned: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () {
+                _soundService.playClick();
+                Navigator.pop(context);
+              },
+            ),
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 '${widget.category} levels',
@@ -65,6 +76,62 @@ class _PuzzleProgressScreenState extends State<PuzzleProgressScreen> {
                 ),
               ),
             ),
+            actions: [
+              ValueListenableBuilder(
+                valueListenable: _currencyService.listenable,
+                builder: (context, box, _) {
+                  return Center(
+                    child: Container(
+                      height: 28,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.amber.shade400,
+                            Colors.orange.shade700,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(1.5),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.monetization_on_rounded,
+                              color: Colors.orange.shade800,
+                              size: 10,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_currencyService.currency}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 16),
+            ],
           ),
           ValueListenableBuilder<Box>(
             valueListenable: Hive.box('iqVaultBox').listenable(),
@@ -84,9 +151,9 @@ class _PuzzleProgressScreenState extends State<PuzzleProgressScreen> {
                     final isComplete = progress.completed;
 
                     // Lock logic: First level is always unlocked.
-                    // Subsequent levels unlock if the previous one is completed.
-                    bool isUnlocked = puzzleId == 1;
-                    if (puzzleId > 1) {
+                    // Subsequent levels unlock if the previous one is completed OR if purchased.
+                    bool isUnlocked = puzzleId == 1 || progress.isUnlocked;
+                    if (puzzleId > 1 && !isUnlocked) {
                       final prevProgress = _service.getProgress(
                         widget.category,
                         puzzleId - 1,
@@ -255,6 +322,19 @@ class _PuzzleProgressScreenState extends State<PuzzleProgressScreen> {
                             fontSize: 14,
                           ),
                         ),
+                      if (!isComplete && isUnlocked && progress.progressPercentage > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress.progressPercentage,
+                              backgroundColor: isDark ? Colors.white10 : Colors.indigo.withValues(alpha: 0.05),
+                              color: diffColor,
+                              minHeight: 4,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -286,6 +366,24 @@ class _PuzzleProgressScreenState extends State<PuzzleProgressScreen> {
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
                     color: Colors.grey,
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: () => _buyUnlock(puzzleId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.withValues(alpha: 0.2),
+                      foregroundColor: Colors.amber.shade900,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'BUY ${CurrencyService.levelUnlockCost}',
+                      style: const TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w900),
+                    ),
                   ),
               ],
             ),
@@ -296,16 +394,46 @@ class _PuzzleProgressScreenState extends State<PuzzleProgressScreen> {
   }
 
   void _navigateToGameplay(int puzzleId) {
+    _soundService.playClick();
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
             PuzzleGameplayScreen(puzzleId: puzzleId, category: widget.category),
       ),
-    );
+    ).then((_) => setState(() {}));
+  }
+
+  Future<void> _buyUnlock(int puzzleId) async {
+    final canAfford = await _currencyService.spendCurrency(
+        CurrencyService.levelUnlockCost);
+
+    if (canAfford) {
+      _soundService.playSuccess();
+      await _service.unlockLevel(widget.category, puzzleId);
+      setState(() {});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Level $puzzleId Unlocked!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      _soundService.playError();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Not enough IQ Points! Level unlock costs ${CurrencyService.levelUnlockCost} pts.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   Future<void> _resetProgress(int puzzleId) async {
+    _soundService.playClick();
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

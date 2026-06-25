@@ -1,4 +1,4 @@
-package com.example.iq_vault
+package com.ahdigital.iq_vault
 
 import io.flutter.embedding.android.FlutterActivity
 
