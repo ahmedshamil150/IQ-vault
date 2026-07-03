@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:io';
 import 'screens/home_screen.dart';
 import 'screens/splash_loading_screen.dart';
 
-import 'services/currency_service.dart';
 import 'services/sound_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SoundService.init();
+  MobileAds.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -63,22 +64,6 @@ class _MyAppState extends State<MyApp> {
 
     if (!box.containsKey('isDarkMode')) {
       await box.put('isDarkMode', false);
-    }
-
-    if (!box.containsKey('tester_bonus_1000')) {
-      final currentCurrency = box.get(
-        'user_currency',
-        defaultValue: CurrencyService.initialCurrency,
-      ) as int;
-      await box.put(
-        'user_currency',
-        currentCurrency + CurrencyService.testerBonus,
-      );
-      await box.put('tester_bonus_1000', true);
-    }
-
-    if (box.containsKey('tester_bonus_100k')) {
-      await box.delete('tester_bonus_100k');
     }
 
     return true;

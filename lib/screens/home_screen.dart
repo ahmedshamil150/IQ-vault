@@ -7,6 +7,7 @@ import 'settings_screen.dart';
 import 'dart:math';
 import '../services/currency_service.dart';
 import '../services/sound_service.dart';
+import '../services/ad_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +20,51 @@ class _HomeScreenState extends State<HomeScreen> {
   final PuzzleProgressService _service = PuzzleProgressService();
   final CurrencyService _currencyService = CurrencyService();
   final SoundService _soundService = SoundService();
+  final AdService _adService = AdService();
+  bool _isLoadingAd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _adService.loadRewardedAd();
+  }
+
+  @override
+  void dispose() {
+    _adService.dispose();
+    super.dispose();
+  }
+
+  void _watchAdForPoints() async {
+    _soundService.playClick();
+    setState(() {
+      _isLoadingAd = true;
+    });
+
+    _adService.showRewardedAd(
+      onUserEarnedReward: (ad, reward) async {
+        await _currencyService.addReward();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('+25 IQ Points Earned!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+              margin: EdgeInsets.all(24),
+            ),
+          );
+        }
+      },
+      onAdDismissed: () {
+        if (mounted) {
+          setState(() {
+            _isLoadingAd = false;
+          });
+        }
+      },
+    );
+  }
 
   final List<Map<String, dynamic>> _puzzleTypes = [
     {
@@ -174,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -192,9 +238,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Challenge your mind',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 20),
-                  _buildTesterBonusBanner(),
                 ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: ElevatedButton.icon(
+                onPressed: _isLoadingAd ? null : _watchAdForPoints,
+                icon: _isLoadingAd
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.play_circle_fill_rounded),
+                label: Text(_isLoadingAd ? 'Loading Ad...' : 'Get +25 IQ Points'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber.shade600,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
             ),
           ),
@@ -347,88 +423,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTesterBonusBanner() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E2125) : Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.amber.withValues(alpha: 0.1),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.indigo.withValues(alpha: 0.05),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.amber.shade400, Colors.orange.shade700],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.orange.withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(Icons.stars_rounded, color: Colors.white, size: 28),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Tester IQ Bonus',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${CurrencyService.testerBonus} IQ Points have been added for testing.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isDark ? Colors.white : Colors.indigo.shade900,
-              foregroundColor: isDark ? Colors.black : Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            child: const Text(
-              'ACTIVE',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

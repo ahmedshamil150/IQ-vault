@@ -12,16 +12,24 @@ class AdService {
       return 'ca-app-pub-3779556578074335/6413793313';
     }
 
-    if (kDebugMode) {
-      if (Platform.isIOS) {
+    if (Platform.isIOS) {
+      if (kDebugMode) {
         return 'ca-app-pub-3940256099942544/1712485313';
+      } else {
+        // TODO: Replace with your actual iOS production ad unit ID
+        return 'ca-app-pub-3779556578074335/1712485313';
       }
     }
 
     return '';
   }
 
-  void loadRewardedAd({required Function onAdLoaded, required Function onAdFailed}) {
+  void loadRewardedAd({Function? onAdLoaded, Function? onAdFailed}) {
+    if (rewardedAdUnitId.isEmpty) {
+      if (onAdFailed != null) onAdFailed();
+      return;
+    }
+
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
@@ -29,11 +37,12 @@ class AdService {
         onAdLoaded: (ad) {
           _rewardedAd = ad;
           _isRewardedAdLoaded = true;
-          onAdLoaded();
+          if (onAdLoaded != null) onAdLoaded();
         },
         onAdFailedToLoad: (error) {
           _isRewardedAdLoaded = false;
-          onAdFailed();
+          _rewardedAd = null;
+          if (onAdFailed != null) onAdFailed();
         },
       ),
     );
@@ -48,23 +57,38 @@ class AdService {
         onAdDismissedFullScreenContent: (ad) {
           ad.dispose();
           _isRewardedAdLoaded = false;
+          _rewardedAd = null;
           onAdDismissed();
           // Preload next ad
-          loadRewardedAd(onAdLoaded: () {}, onAdFailed: () {});
+          loadRewardedAd();
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
           ad.dispose();
           _isRewardedAdLoaded = false;
+          _rewardedAd = null;
           onAdDismissed();
+          // Try to reload ad
+          loadRewardedAd();
         },
       );
 
       _rewardedAd!.show(onUserEarnedReward: onUserEarnedReward);
-      _rewardedAd = null;
     } else {
-      onAdDismissed();
+      // If no ad loaded, try to load one first
+      loadRewardedAd(onAdLoaded: () {
+        showRewardedAd(
+          onUserEarnedReward: onUserEarnedReward,
+          onAdDismissed: onAdDismissed,
+        );
+      }, onAdFailed: () {
+        onAdDismissed();
+      });
     }
   }
 
   bool get isAdLoaded => _isRewardedAdLoaded;
+
+  void dispose() {
+    _rewardedAd?.dispose();
+  }
 }

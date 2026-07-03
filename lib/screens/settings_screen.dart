@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../services/sound_service.dart';
-import '../services/currency_service.dart';
 import 'help_screen.dart';
 import 'privacy_policy_screen.dart';
 
@@ -122,7 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   context,
                   icon: Icons.info_outline_rounded,
                   title: 'Version',
-                  subtitle: '1.2.0 (Build 42)',
+                  subtitle: '1.1.0 (Build 5)',
                 ),
                 _buildSettingRow(
                   context,

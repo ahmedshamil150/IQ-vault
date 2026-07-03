@@ -6,6 +6,7 @@ import '../logic/puzzle_generators.dart';
 import '../services/puzzle_progress_service.dart';
 import '../services/currency_service.dart';
 import '../services/sound_service.dart';
+import '../services/ad_service.dart';
 
 class PuzzleGameplayScreen extends StatefulWidget {
   final int puzzleId;
@@ -27,6 +28,7 @@ class _PuzzleGameplayScreenState extends State<PuzzleGameplayScreen> {
   final PuzzleProgressService _service = PuzzleProgressService();
   final CurrencyService _currencyService = CurrencyService();
   final SoundService _soundService = SoundService();
+  final AdService _adService = AdService();
   final Stopwatch _stopwatch = Stopwatch();
   late Timer _timer;
   bool _isSolved = false;
@@ -37,9 +39,31 @@ class _PuzzleGameplayScreenState extends State<PuzzleGameplayScreen> {
   Set<String> _sudokuErrorCells = {};
   String? _lastIncorrectSudokuSignature;
 
+  void _watchAdForPoints() async {
+    _soundService.playClick();
+    _adService.showRewardedAd(
+      onUserEarnedReward: (ad, reward) async {
+        await _currencyService.addReward();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('+25 IQ Points Earned!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+              margin: EdgeInsets.all(24),
+            ),
+          );
+        }
+      },
+      onAdDismissed: () {},
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _adService.loadRewardedAd();
     _initializePuzzle();
     _startTimer();
   }
@@ -116,6 +140,7 @@ class _PuzzleGameplayScreenState extends State<PuzzleGameplayScreen> {
 
   @override
   void dispose() {
+    _adService.dispose();
     _timer.cancel();
     _stopwatch.stop();
     super.dispose();
@@ -417,7 +442,7 @@ class _PuzzleGameplayScreenState extends State<PuzzleGameplayScreen> {
             label: 'GET POINTS',
             textColor: Colors.white,
             onPressed: () {
-              Navigator.pop(context); // Go back to home to watch ad
+              _watchAdForPoints();
             },
           ),
         ),

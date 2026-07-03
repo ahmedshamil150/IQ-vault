@@ -11,7 +11,6 @@ class CurrencyService {
   static const int calculatorCost = 15;
   static const int levelUnlockCost = 150;
   static const int initialCurrency = 150;
-  static const int testerBonus = 1000;
 
   final Box _box = Hive.box('iqVaultBox');
 
